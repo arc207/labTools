@@ -424,30 +424,32 @@ avgsRatioR = arrayfun(@(x) mean(ratioR(ampsStimR == x),'omitnan'),ampsStimRU);
 avgsRatioL = arrayfun(@(x) mean(ratioL(ampsStimL == x),'omitnan'),ampsStimLU);
 
 %% 12. (Optional) Fit Gaussian to Average H-wave Amplitudes
-[fit,ampsWavesNorm] = Hreflex.fitCalAndNormalize( ...
-    {ampsStimR';ampsStimL'},amps(:,1:2));
+fit = Hreflex.fitCal({ampsStimR';ampsStimL'},amps(:,1:2));
 
-I_fit = linspace(min(ampsStimR),max(ampsStimR),100);
+I_fit = linspace(min(ampsStimR),max(ampsStimR),1000);   % fit intensities
 MR_fit = fit.M.modHyperbolic(fit.M.R.params,I_fit);     % right M-wave fit
 ML_fit = fit.M.modHyperbolic(fit.M.L.params,I_fit);     % left M-wave fit
+[~,indR2] = max(diff(diff(MR_fit)));
+[~,indL2] = max(diff(diff(ML_fit)));
+[~,indR3] = findpeaks(diff(diff(diff(MR_fit))),'NPeaks',1);
+[~,indL3] = findpeaks(diff(diff(diff(ML_fit))),'NPeaks',1);
+intensityR2 = I_fit(indR2);
+intensityL2 = I_fit(indL2);
+intensityR3 = I_fit(indR3);
+intensityL3 = I_fit(indL3);
 
-[~,indR] = findpeaks(diff(diff(MR_fit)));
-[~,indL] = findpeaks(diff(diff(ML_fit)));
-
-intensityR = I_fit(indR);
-intensityL = I_fit(indL);
-
-if fit.M.R.R2 > 0.95
-    fprintf(['Right leg M-wave fit R2: %0.2f > 0.95.\nExperiment ' ...
-        'stimulation current: %.1f mA.\n'],fit.M.R.R2,intensityR);
+if fit.M.R.R2 > 0.95                            % if fit quality high, ...
+    fprintf(['Right leg M-wave fit R2: %0.2f > 0.95.\n2nd derivative ' ...
+        'current: %.1f mA.\n3rd derivative current: %.1f mA.\n'], ...
+        fit.M.R.R2,intensityR2,intensityR3);
 else
     warning(['Right leg M-wave fit R2: %0.2f < 0.95.\nUse old approach' ...
         ' to select experiment stimulation current.\n'],fit.M.R.R2);
 end
-
 if fit.M.L.R2 > 0.95
-    fprintf(['Left leg M-wave fit R2: %0.2f > 0.95.\nExperiment ' ...
-        'stimulation current: %.1f mA.\n'],fit.M.L.R2,intensityL);
+    fprintf(['Left leg M-wave fit R2: %0.2f > 0.95.\n2nd derivative ' ...
+        'current: %.1f mA.\n3rd derivative current: %.1f mA.\n'], ...
+        fit.M.L.R2,intensityL2,intensityL3);
 else
     fprintf(['Left leg M-wave fit R2: %0.2f < 0.95.\nUse old approach' ...
         ' to select experiment stimulation current.\n'],fit.M.L.R2);
@@ -460,14 +462,24 @@ Hreflex.plotNoiseHistogram(ampsNoiseL,'Left Leg',id,trialNum,pathFigs);
 %% 14. Plot Recruitment Curve for Both Legs
 % compute four times noise floor (mean) to determine whether
 % to send participant home or not (at least one leg must exceed threshold)
-Hreflex.plotCal(ampsStimR,{ampsMwaveR; ampsHwaveR},'EMG Amplitude (mV)',...
-    'Right Leg',id,trialNum,fit,mean(ampsNoiseR),pathFigs);
-Hreflex.plotCal(ampsStimL,{ampsMwaveL; ampsHwaveL},'EMG Amplitude (mV)',...
-    'Left Leg',id,trialNum,fit,mean(ampsNoiseL),pathFigs);
+Hreflex.plotCal(ampsStimR,{ampsMwaveR;ampsHwaveR},'EMG Amplitude (mV)', ...
+    'Right Leg',id,trialNum,'fit',fit,'noise',mean(ampsNoiseR), ...
+    'pathFig',pathFigs);
+Hreflex.plotCal(ampsStimL,{ampsMwaveL;ampsHwaveL},'EMG Amplitude (mV)', ...
+    'Left Leg',id,trialNum,'fit',fit,'noise',mean(ampsNoiseL), ...
+    'pathFig',pathFigs);
 
-%% 15. Plot Ratio of H-wave to M-wave amplitude
+%% 15. Plot Normalized Recruitment Curve for Both Legs
+Hreflex.plotCal(ampsStimR,{ampsMwaveR;ampsHwaveR},'Proportion M_{max}', ...
+    'Right Leg',id,trialNum,'fit',fit,'shouldNormalize',true, ...
+    'pathFig',pathFigs);
+Hreflex.plotCal(ampsStimL,{ampsMwaveL;ampsHwaveL},'Proportion M_{max}', ...
+    'Left Leg',id,trialNum,'fit',fit,'shouldNormalize',true, ...
+    'pathFig',pathFigs);
+
+%% 16. Plot Ratio of H-wave to M-wave amplitude
 Hreflex.plotCal(ampsStimR,{ratioR},'H:M Ratio','Right Leg',id,trialNum, ...
-    pathFigs);
+    'pathFig',pathFigs);
 Hreflex.plotCal(ampsStimL,{ratioL},'H:M Ratio','Left Leg',id,trialNum, ...
-    pathFigs);
+    'pathFig',pathFigs);
 
